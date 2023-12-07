@@ -17,6 +17,8 @@ namespace CloudflareDDNS
         public string Identifier { get; set; } = "023e105f4ecef8ad9ca31a8372d0c353";
         public string ZoneIdentifier { get; set; } = "023e105f4ecef8ad9ca31a8372d0c353";
 
-        public bool AutoGetPublicIp { get; set; } = true; 
+        public bool AutoGetPublicIp { get; set; } = true;
+        public string XAuthEmail { get; set; } = "auth@email";
+        public string XAuthKey { get; set; } = "auth-key";
     }
 }

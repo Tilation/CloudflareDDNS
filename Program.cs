@@ -45,8 +45,12 @@ namespace CloudflareDDNS
                 ["proxied"] = settings.Proxied.ToString().ToLower(),
                 ["type"] = settings.Type,
                 ["comment"] = settings.Comment,
-                ["ttl"] = settings.TTL.ToString(),
+                ["ttl"] = settings.TTL.ToString()
             });
+
+            requestContent.Headers.Add("X-Auth-Email", settings.XAuthEmail);
+            requestContent.Headers.Add("X-Auth-Key", settings.XAuthKey);
+            requestContent.Headers.Add("Content-Type", "application/json");
 
             // Get the response.
             HttpResponseMessage response = client.PutAsync(
