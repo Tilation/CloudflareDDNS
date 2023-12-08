@@ -1,68 +1,59 @@
 ﻿using Newtonsoft.Json;
+using Serilog;
 
 namespace CloudflareDDNS
 {
     internal class Program
     {
-        struct newip
-        {
-            public string ip;
-        }
         static void Main(string[] args)
         {
-            if (!File.Exists("settings.json"))
+            string settingsFile = "./settings.json";
+            Log.Logger = new LoggerConfiguration().WriteTo.Console().WriteTo.File("log.log").CreateLogger();
+
+
+            if (!File.Exists(settingsFile))
             {
-                File.WriteAllText("settings.json", JsonConvert.SerializeObject(new Settings(), Formatting.Indented));
-                Console.WriteLine("Created settings.json, please edit!");
+                File.WriteAllText(settingsFile, JsonConvert.SerializeObject(new Settings(), Formatting.Indented));
+                Log.Information("Created settings file at: {0}", settingsFile);
+                Log.Information("Edit the file, set the Ready property to true, and re-run.");
                 return;
             }
 
-            Settings settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText("settings.json"));
+            Settings settings;
 
-            if (settings == null)
+            try
             {
-                Console.WriteLine("Invalid configuration file!");
-                return;
-            }
-
-            HttpClient client = new HttpClient();
-
-            if (settings.AutoGetPublicIp)
-            {
-                var val = client.GetAsync("https://api.ipify.org?format=json").Result;
-                if (val.StatusCode == System.Net.HttpStatusCode.OK)
+                if (JsonConvert.DeserializeObject<Settings>(File.ReadAllText(settingsFile)) is Settings s)
                 {
-                    var _newip = JsonConvert.DeserializeObject<newip>(val.Content.ReadAsStringAsync().Result);
-                    settings.NewIp = _newip.ip; 
+                    settings = s;
+                }
+                else
+                {
+                    Log.Error("Could not read settings!");
+                    return;
                 }
             }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Could not read settings!");
+                return;
+            }
+
+            if (settings.Ready == false)
+            {
+                Log.Warning("Property Ready is {0}, set it to {1} to continue execution.", false, true);
+                return;
+            }
+
+            Log.Information("Starting main loop");
 
 
-            // Create the HttpContent for the form to be posted.
-            var requestContent = new FormUrlEncodedContent(new Dictionary<string, string> {
-                ["content"] = settings.NewIp,
-                ["name"] = settings.DomainName,
-                ["proxied"] = settings.Proxied.ToString().ToLower(),
-                ["type"] = settings.Type,
-                ["comment"] = settings.Comment,
-                ["ttl"] = settings.TTL.ToString()
-            });
+            CloudflareDDNSState state = new CloudflareDDNSState(settings);
 
-            requestContent.Headers.Add("X-Auth-Email", settings.XAuthEmail);
-            requestContent.Headers.Add("X-Auth-Key", settings.XAuthKey);
-            requestContent.Headers.Add("Content-Type", "application/json");
-
-            // Get the response.
-            HttpResponseMessage response = client.PutAsync(
-                $"https://api.cloudflare.com/client/v4/zones/{settings.ZoneIdentifier}/dns_records/{settings.Identifier}",
-                requestContent).Result;
-
-            // Get the response content.
-            var result = response.Content.ReadAsStringAsync().Result;
-
-            // Write the output.
-            Console.WriteLine(result);
-            
+            while (true)
+            {
+                Console.ReadLine();
+            }
         }
     }
 }
